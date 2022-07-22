@@ -66,5 +66,3 @@ bob_het = function(data, NA_lim, HET_lim){
 }
 
 
-### Thank you for using. Any comments or tips, please contact me: saulo.chaves@ufv.br
-
