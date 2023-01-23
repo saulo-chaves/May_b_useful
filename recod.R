@@ -14,7 +14,7 @@ recod = function(data, name.fact, cod){
   stopifnot("cod must be a string" = is.character(cod))
   stopifnot("name.fact must be a string" = is.character(name.fact))
   
-  num = length(unique(data[,name.fact]))
+  num = dim(as.matrix(unique(data[,name.fact])))[1]
   data$ord = 1:nrow(data)
   
   a = data.frame(
