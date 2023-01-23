@@ -1,3 +1,15 @@
+## Function recod
+##
+##' This function performs the recodification of a specific factor 
+##' in the data set. It adds a new column with the coded levels to
+##' the data set
+##'
+##' @title Easy factor recodification
+##' @param data dataframe A dataframe containing the factor to be recoded
+##' @param name.fact string Name of the column containing the factor to be recoded
+##' @param cod string String that will appear before the numbers in the new code. Ex: "G001"
+##' @return The function returns the datagrame with a new column containing the recoded levels
+
 recod = function(data, name.fact, cod){
   stopifnot("cod must be a string" = is.character(cod))
   stopifnot("name.fact must be a string" = is.character(name.fact))
