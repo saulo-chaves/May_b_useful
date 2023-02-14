@@ -1,0 +1,19 @@
+get.coord <- function(croqui){
+   matriz<-matrix(ncol=3)
+   matriz2<-matrix(ncol=3)
+   
+   for (i in 1: nrow(croqui)){
+      for(j in 1: ncol(croqui)){ 
+         
+         matriz[,1]<-croqui[i,j]
+         matriz[,2]<-i # linha
+         matriz[,3]<-j # coluna
+         matriz2<-rbind(matriz2,matriz)
+      }
+   }
+   
+   matriz2<- matriz2[-1,]
+   colnames(matriz2)<-c("TRAT", "ROW", "COL")
+   return(as.data.frame(matriz2))
+   
+}
