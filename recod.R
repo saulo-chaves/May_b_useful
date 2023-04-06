@@ -9,6 +9,10 @@
 ##' @param name.fact string Name of the column containing the factor to be recoded
 ##' @param cod string String that will appear before the numbers in the new code. Ex: "G001"
 ##' @return The function returns the datagrame with a new column containing the recoded levels
+##' 
+##' @author Saulo F. S. Chaves
+##' 
+
 
 recod = function(data, name.fact, cod){
   stopifnot("cod must be a string" = is.character(cod))
