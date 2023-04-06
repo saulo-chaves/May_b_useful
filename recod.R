@@ -10,7 +10,7 @@
 ##' @param cod string String that will appear before the numbers in the new code. Ex: "G001"
 ##' @return The function returns the datagrame with a new column containing the recoded levels
 ##' 
-##' @author Saulo F. S. Chaves
+##' @author Saulo F. S. Chaves (saulo.chaves at ufv.br)
 ##' 
 
 
