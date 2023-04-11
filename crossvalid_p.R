@@ -211,7 +211,7 @@ crossvalid = function(cvdata,  ETA, cv = 1, results = NULL,...){
             yNA[z$env == w] = NA
             
             crossval = BGLR::BGLR(y = yNA, ETA = ETA, nIter = cvdata$cvinfo['niter'],
-                                  burnIn = cvdata$cvinfo['burnin'], verbose = T, ...)
+                                  burnIn = cvdata$cvinfo['burnin'], verbose = F, ...)
             unlink("*.dat")
             
             cbind(
@@ -283,7 +283,7 @@ crossvalid = function(cvdata,  ETA, cv = 1, results = NULL,...){
             yNA[z$env == w & z$set == x] = NA
             
             crossval = BGLR::BGLR(y = yNA, ETA = ETA, nIter = cvdata$cvinfo['niter'],
-                                  burnIn = cvdata$cvinfo['burnin'], verbose = T, ...)
+                                  burnIn = cvdata$cvinfo['burnin'], verbose = F, ...)
             unlink("*.dat")
             
             cbind(
