@@ -1,3 +1,79 @@
+##' Function assignation
+##'
+##' @title Preparing the data for cross-validation
+##' 
+##' @description
+##' This function divides the data into k folds and repeat this process according
+##' to the number of folds and repetitions provided by the user. It also stores 
+##' all the necessary information to perform the cross-validation using [BGLR::BGLR()]. 
+##' 
+##' @param data A data frame containing the observed data
+##' @param y The name of the column that contains the trait values
+##' @param gen The name of the column that contains the genotypes information
+##' @param env The name of the column that contains the environments information
+##' @param niter An integer indicating the number of iteration
+##' @param burnin An integer indicating the number of burn-in iterations
+##' @param seed An integer indicating the seed to be used. Mandatory, for the sake
+##' of reproducibility
+##' @param nfolds An integer indicating the number of folds for the cross-validation
+##' @param nrept An integer indicating the number of times the cross-validation 
+##' should repeat
+##' @param cv A CHARACTER: 'cv1' for CV1, 'cv2' for CV2, 'cv0' for CV0, and 'cv00' for CV00
+##' 
+##' @return The function will return a dataframe named `cvinfo` with the 
+##' information necessary to perform the cross-validation using [BGLR::BGLR()], 
+##' and a list called `cvdata` containing the data that will be used in the 
+##' cross-validations. 
+##' 
+##' 
+##' @author Saulo F. S. Chaves (saulo.chaves at ufv.br)
+##'
+
+assignation = function(data, y, gen, env, seed, nfolds, nrept, cv, niter, burnin){
+  
+  data = data
+  data$gen = data[,gen]
+  data$env = data[,env]
+  data$trait = data[,y]
+  
+  if (cv == 'cv1' | cv == 'cv00'){
+    set.seed(seed)
+    sets = split(
+      rep(
+        1:nfolds, length(unique(data$gen)) * nrept
+      )[order(runif(length(unique(data$gen)) * nrept))],
+      f = 1:nrept
+    )
+    cvdata = lapply(sets, function(x){
+      cvdata = data[,c('gen','env','trait')]
+      cvdata = merge(cvdata, data.frame(
+        gen = unique(data$gen),
+        set = x
+      ), by = gen)
+    })
+    names(cvdata) = paste0('R',1:nrept)
+    
+  }else if (cv == 'cv2' | cv == 'cv0'){
+    cvdata = list()
+    for (j in 1:nrept) {
+      set.seed(seed+j)
+      cvdata[[j]] = data[,c('gen','env','trait')]
+      cvdata[[j]]$set = NA
+      for (i in unique(data$gen)) {
+        cvdata[[j]][cvdata[[j]]$gen == i,'set'] = sample(
+          1:nfolds, 
+          size = dim(cvdata[[j]][cvdata[[j]]$gen == i,])[1],
+          replace = dim(cvdata[[j]][cvdata[[j]]$gen == i,])[1] > nfolds
+        )
+      }
+    }
+    names(cvdata) = paste0('R',1:nrept)
+  }
+  cvinfo = data.frame(nfolds = nfolds, nrept = nrept, cv = cv, niter = niter, burnin = burnin)
+  
+  return(list(cvdata = cvdata, cvinfo = cvinfo))
+}
+
 ##' Function crossvalid
 ##'
 ##' @title Cross-validation schemes
@@ -5,7 +81,8 @@
 ##' @description
 ##' This functions performs parallelized cross-validations for obtaining the predictive ability
 ##' of a genomic prediction model. The function can perform CV1, CV2, CV0 and CV00.
-##' The models are fitted using [BGLR::BGLR()].
+##' The models are fitted using [BGLR::BGLR()]. Before using `crossvalid`, users may
+##' prepare the data using the `assignation()` function.
 ##' 
 ##' @details
 ##' Cross-validations are useful for assessing how good the model can be in predicting
@@ -18,22 +95,12 @@
 ##' environments. Finally, CV00 evaluates how good is the model's predictions for 
 ##' untested genotypes performance in untested environments.
 ##' 
-##' @param data A data frame containing the observed data
-##' @param y The name of the column that contains the trait values
-##' @param gen The name of the column that contains the genotypes information
-##' @param env The name of the column that contains the environments information
+##' @param cvdata A list obtained from the `assignation()` function
 ##' @param ETA A two-level list used to specify the regression function (or linear 
 ##' predictor). See [BGLR::BGLR()] manual for more details.
-##' @param niter An integer indicating the number of iteration
-##' @param burnin An integer indicating the number of burn-in iterations
-##' @param seed An integer indicating the seed to be used. Mandatory, for the sake
-##' of reproducibility
-##' @param nfolds An integer indicating the number of folds for the cross-validation
-##' @param nrept An integer indicating the number of times the cross-validation 
-##' should repeat
-##' @param cv 1 for CV1 (default), 2 for CV2, 0 for CV0, and 00 for CV00
 ##' @param results If NULL, the results will be provided per repetition. 
 ##' If `results = 'mean'`, the function will return the mean across repetitions.
+##' @param ... passed to [BGLR::BGLR()].
 ##' 
 ##' @return The function will return a list with:
 ##' \itemize{
@@ -57,24 +124,24 @@ crossvalid = function(cvdata,  ETA, results = NULL,...){
   
   cvdata = cvdata
 
-  if (cvdata$cvinfo['cv'] == '1'){
+  if (cvdata$cvinfo$cv == 'cv1'){
     cl = parallel::makeCluster(parallel::detectCores(logical = F))
     parallel::clusterEvalQ(cl, library(BGLR))
     parallel::clusterExport(cl, varlist = c('cvdata', 'ETA'))
     a = list()
-    for (i in 1:length(split(paste0('R',1:cvdata$cvinfo['nrept']), 
-                             f = 1:ceiling(cvdata$cvinfo['nrept']/ parallel::detectCores(logical = F))))) {
+    for (i in 1:length(split(paste0('R',1:cvdata$cvinfo$nrept), 
+                             f = 1:ceiling(cvdata$cvinfo$nrept/ parallel::detectCores(logical = F))))) {
       a[[i]] = parallel::parLapply(cl = cl, cvdata$cvdata[
-        split(paste0('R',1:cvdata$cvinfo['nrept']), 
-              f = 1:ceiling(cvdata$cvinfo['nrept']/parallel::detectCores(logical = F)))[[i]]
+        split(paste0('R',1:cvdata$cvinfo$nrept), 
+              f = 1:ceiling(cvdata$cvinfo$nrept/parallel::detectCores(logical = F)))[[i]]
         ], function(z){
-        lapply(1:cvdata$cvinfo['nfolds'], function(x){
+        lapply(1:cvdata$cvinfo$nfolds, function(x){
           
           yNA = z$trait
           yNA[z$set == x] = NA
           
-          crossval = BGLR::BGLR(y = yNA, ETA = ETA, nIter = cvdata$cvinfo['niter'], 
-                                burnIn = cvdata$cvinfo['burnin'], verbose = F)
+          crossval = BGLR::BGLR(y = yNA, ETA = ETA, nIter = cvdata$cvinfo$niter, 
+                                burnIn = cvdata$cvinfo$burnin, verbose = F)
           unlink("*.dat")
           
           cbind(
@@ -125,24 +192,24 @@ crossvalid = function(cvdata,  ETA, results = NULL,...){
       )
       return(res)
     }
-  }else if (cvdata$cvinfo['cv'] == '2'){
+  }else if (cvdata$cvinfo$cv == 'cv2'){
     cl = parallel::makeCluster(parallel::detectCores(logical = F))
     parallel::clusterEvalQ(cl, library(BGLR))
     parallel::clusterExport(cl, varlist = c('cvdata', 'ETA'))
     a = list()
-    for (i in 1:length(split(paste0('R',1:cvdata$cvinfo['nrept']), 
-                             f = 1:ceiling(cvdata$cvinfo['nrept']/parallel::detectCores(logical = F))))) {
+    for (i in 1:length(split(paste0('R',1:cvdata$cvinfo$nrept), 
+                             f = 1:ceiling(cvdata$cvinfo$nrept/parallel::detectCores(logical = F))))) {
       a[[i]] = parallel::parLapply(cl = cl, cvdata$cvdata[
-        split(paste0('R',1:cvdata$cvinfo['nrept']), 
-              f = 1:ceiling(cvdata$cvinfo['nrept']/parallel::detectCores(logical = F)))[[i]]
+        split(paste0('R',1:cvdata$cvinfo$nrept), 
+              f = 1:ceiling(cvdata$cvinfo$nrept/parallel::detectCores(logical = F)))[[i]]
         ], function(z){
-        lapply(1:cvdata$cvinfo['nfolds'], function(x){
+        lapply(1:cvdata$cvinfo$nfolds, function(x){
           
           yNA = z$trait
           yNA[z$set == x] = NA
           
-          crossval = BGLR::BGLR(y = yNA, ETA = ETA, nIter = cvdata$cvinfo['niter'],
-                                burnIn = cvdata$cvinfo['burnin'], verbose = F, ...)
+          crossval = BGLR::BGLR(y = yNA, ETA = ETA, nIter = cvdata$cvinfo$niter,
+                                burnIn = cvdata$cvinfo$burnin, verbose = F, ...)
           unlink("*.dat")
           
           cbind(
@@ -193,25 +260,25 @@ crossvalid = function(cvdata,  ETA, results = NULL,...){
       )
       return(res)
     }
-  }else if (cvdata$cvinfo['cv'] == '0'){
+  }else if (cvdata$cvinfo$cv == 'cv0'){
     cl = parallel::makeCluster(parallel::detectCores(logical = F))
     parallel::clusterEvalQ(cl, library(BGLR))
     parallel::clusterExport(cl, varlist = c('cvdata', 'ETA'))
     a = list()
-    for (i in 1:length(split(paste0('R',1:cvdata$cvinfo['nrept']),
-                             f = 1:ceiling(cvdata$cvinfo['nrept']/parallel::detectCores(logical = F))))) {
+    for (i in 1:length(split(paste0('R',1:cvdata$cvinfo$nrept),
+                             f = 1:ceiling(cvdata$cvinfo$nrept/parallel::detectCores(logical = F))))) {
       a[[i]] = parallel::parLapply(cl = cl, X = cvdata$cvdata[
-        split(paste0('R',1:cvdata$cvinfo['nrept']),
-              f = 1:ceiling(cvdata$cvinfo['nrept']/parallel::detectCores(logical = F)))[[i]]
+        split(paste0('R',1:cvdata$cvinfo$nrept),
+              f = 1:ceiling(cvdata$cvinfo$nrept/parallel::detectCores(logical = F)))[[i]]
         ], fun = function(z){
         lapply(unique(cvdata$cvdata[[1]]$env), function(w){
-          lapply(1:cvdata$cvinfo['nfolds'], function(x){
+          lapply(1:cvdata$cvinfo$nfolds, function(x){
             
             yNA = z$trait
             yNA[z$env == w] = NA
             
-            crossval = BGLR::BGLR(y = yNA, ETA = ETA, nIter = cvdata$cvinfo['niter'],
-                                  burnIn = cvdata$cvinfo['burnin'], verbose = T, ...)
+            crossval = BGLR::BGLR(y = yNA, ETA = ETA, nIter = cvdata$cvinfo$niter,
+                                  burnIn = cvdata$cvinfo$burnin, verbose = T, ...)
             unlink("*.dat")
             
             cbind(
@@ -264,26 +331,26 @@ crossvalid = function(cvdata,  ETA, results = NULL,...){
       return(res)
     }
     
-  }else if (cvdata$cvinfo['cv'] == '00'){
+  }else if (cvdata$cvinfo$cv == 'cv00'){
     cl = parallel::makeCluster(parallel::detectCores(logical = F))
     parallel::clusterEvalQ(cl, library(BGLR))
     parallel::clusterExport(cl, varlist = c('cvdata', 'ETA'))
     
     a = list()
-    for (i in 1:length(split(paste0('R',1:cvdata$cvinfo['nrept']), 
-                             f = 1:ceiling(cvdata$cvinfo['nrept']/parallel::detectCores(logical = F))))) {
+    for (i in 1:length(split(paste0('R',1:cvdata$cvinfo$nrept), 
+                             f = 1:ceiling(cvdata$cvinfo$nrept/parallel::detectCores(logical = F))))) {
       a[[i]] = parallel::parLapply(cl = cl, X = cvdata$cvdata[
-        split(paste0('R',1:cvdata$cvinfo['nrept']),
-              f = 1:ceiling(cvdata$cvinfo['nrept']/parallel::detectCores(logical = F)))[[i]]
+        split(paste0('R',1:cvdata$cvinfo$nrept),
+              f = 1:ceiling(cvdata$cvinfo$nrept/parallel::detectCores(logical = F)))[[i]]
         ], fun = function(z){
         lapply(unique(cvdata$cvdata[[1]]$env), function(w){
-          lapply(1:cvdata$cvinfo['nfolds'], function(x){
+          lapply(1:cvdata$cvinfo$nfolds, function(x){
             
             yNA = z$trait
             yNA[z$env == w & z$set == x] = NA
             
-            crossval = BGLR::BGLR(y = yNA, ETA = ETA, nIter = cvdata$cvinfo['niter'],
-                                  burnIn = cvdata$cvinfo['burnin'], verbose = T, ...)
+            crossval = BGLR::BGLR(y = yNA, ETA = ETA, nIter = cvdata$cvinfo$niter,
+                                  burnIn = cvdata$cvinfo$burnin, verbose = T, ...)
             unlink("*.dat")
             
             cbind(
@@ -337,55 +404,4 @@ crossvalid = function(cvdata,  ETA, results = NULL,...){
     }
   }
 }
-
-
-
-### Add description
-
-assignation = function(data, y, gen, env, seed, nfolds, nrept, cv = '1', 
-                       niter, burnin){
-  
-  data = data
-  data$gen = data[,gen]
-  data$env = data[,env]
-  data$trait = data[,y]
-  
-  if (cv == '1' | cv == '00'){
-    set.seed(seed)
-    sets = split(
-      rep(
-        1:nfolds, length(unique(data$gen)) * nrept
-      )[order(runif(length(unique(data$gen)) * nrept))],
-      f = 1:nrept
-    )
-    cvdata = lapply(sets, function(x){
-      cvdata = data[,c('gen','env','trait')]
-      cvdata = merge(cvdata, data.frame(
-        gen = unique(data$gen),
-        set = x
-      ), by = gen)
-    })
-    names(cvdata) = paste0('R',1:nrept)
-    
-  }else if (cv == '2' | cv == '0'){
-    cvdata = list()
-    for (j in 1:nrept) {
-      set.seed(seed+j)
-      cvdata[[j]] = data[,c('gen','env','trait')]
-      cvdata[[j]]$set = NA
-      for (i in unique(data$gen)) {
-        cvdata[[j]][cvdata[[j]]$gen == i,'set'] = sample(
-          1:nfolds, 
-          size = dim(cvdata[[j]][cvdata[[j]]$gen == i,])[1],
-          replace = dim(cvdata[[j]][cvdata[[j]]$gen == i,])[1] > nfolds
-        )
-      }
-    }
-    names(cvdata) = paste0('R',1:nrept)
-  }
-  cvinfo = data.frame(nfolds = nfolds, nrept = nrept, cv = cv, niter = niter, burnin = burnin)
-  
-  return(list(cvdata = cvdata, cvinfo = cvinfo))
-}
-
 
