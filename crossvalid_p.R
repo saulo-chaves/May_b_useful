@@ -53,11 +53,11 @@
 ##' @author Saulo F. S. Chaves (saulo.chaves at ufv.br)
 ##'
 
-crossvalid = function(cvdata,  ETA, cv = 1, results = NULL,...){
+crossvalid = function(cvdata,  ETA, results = NULL,...){
   
   cvdata = cvdata
 
-  if (cv == 1){
+  if (cvdata$cvinfo['cv'] == '1'){
     cl = parallel::makeCluster(parallel::detectCores(logical = F))
     parallel::clusterEvalQ(cl, library(BGLR))
     parallel::clusterExport(cl, varlist = c('cvdata', 'ETA'))
@@ -125,7 +125,7 @@ crossvalid = function(cvdata,  ETA, cv = 1, results = NULL,...){
       )
       return(res)
     }
-  }else if (cv == 2){
+  }else if (cvdata$cvinfo['cv'] == '2'){
     cl = parallel::makeCluster(parallel::detectCores(logical = F))
     parallel::clusterEvalQ(cl, library(BGLR))
     parallel::clusterExport(cl, varlist = c('cvdata', 'ETA'))
@@ -193,7 +193,7 @@ crossvalid = function(cvdata,  ETA, cv = 1, results = NULL,...){
       )
       return(res)
     }
-  }else if (cv == 0){
+  }else if (cvdata$cvinfo['cv'] == '0'){
     cl = parallel::makeCluster(parallel::detectCores(logical = F))
     parallel::clusterEvalQ(cl, library(BGLR))
     parallel::clusterExport(cl, varlist = c('cvdata', 'ETA'))
@@ -211,7 +211,7 @@ crossvalid = function(cvdata,  ETA, cv = 1, results = NULL,...){
             yNA[z$env == w] = NA
             
             crossval = BGLR::BGLR(y = yNA, ETA = ETA, nIter = cvdata$cvinfo['niter'],
-                                  burnIn = cvdata$cvinfo['burnin'], verbose = F, ...)
+                                  burnIn = cvdata$cvinfo['burnin'], verbose = T, ...)
             unlink("*.dat")
             
             cbind(
@@ -264,7 +264,7 @@ crossvalid = function(cvdata,  ETA, cv = 1, results = NULL,...){
       return(res)
     }
     
-  }else if (cv == 00){
+  }else if (cvdata$cvinfo['cv'] == '00'){
     cl = parallel::makeCluster(parallel::detectCores(logical = F))
     parallel::clusterEvalQ(cl, library(BGLR))
     parallel::clusterExport(cl, varlist = c('cvdata', 'ETA'))
@@ -283,7 +283,7 @@ crossvalid = function(cvdata,  ETA, cv = 1, results = NULL,...){
             yNA[z$env == w & z$set == x] = NA
             
             crossval = BGLR::BGLR(y = yNA, ETA = ETA, nIter = cvdata$cvinfo['niter'],
-                                  burnIn = cvdata$cvinfo['burnin'], verbose = F, ...)
+                                  burnIn = cvdata$cvinfo['burnin'], verbose = T, ...)
             unlink("*.dat")
             
             cbind(
@@ -342,7 +342,7 @@ crossvalid = function(cvdata,  ETA, cv = 1, results = NULL,...){
 
 ### Add description
 
-assignation = function(data, y, gen, env, seed, nfolds, nrept, cv = 1, 
+assignation = function(data, y, gen, env, seed, nfolds, nrept, cv = '1', 
                        niter, burnin){
   
   data = data
@@ -350,7 +350,7 @@ assignation = function(data, y, gen, env, seed, nfolds, nrept, cv = 1,
   data$env = data[,env]
   data$trait = data[,y]
   
-  if (cv == 1){
+  if (cv == '1' | cv == '00'){
     set.seed(seed)
     sets = split(
       rep(
@@ -367,7 +367,7 @@ assignation = function(data, y, gen, env, seed, nfolds, nrept, cv = 1,
     })
     names(cvdata) = paste0('R',1:nrept)
     
-  }else if (cv == 2){
+  }else if (cv == '2' | cv == '0'){
     cvdata = list()
     for (j in 1:nrept) {
       set.seed(seed+j)
@@ -383,7 +383,7 @@ assignation = function(data, y, gen, env, seed, nfolds, nrept, cv = 1,
     }
     names(cvdata) = paste0('R',1:nrept)
   }
-  cvinfo = c(nfolds = nfolds, nrept = nrept, cv = cv, niter = niter, burnin = burnin)
+  cvinfo = data.frame(nfolds = nfolds, nrept = nrept, cv = cv, niter = niter, burnin = burnin)
   
   return(list(cvdata = cvdata, cvinfo = cvinfo))
 }
