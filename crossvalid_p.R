@@ -367,7 +367,7 @@ assignation = function(data, y, gen, env, seed, nfolds, nrept, cv = 1,
     })
     names(cvdata) = paste0('R',1:nrept)
     
-  }else if (cv == 2 || cv == 0){
+  }else if (cv == 2 | cv == 0){
     cvdata = list()
     for (j in 1:nrept) {
       set.seed(seed+j)
