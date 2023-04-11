@@ -53,47 +53,28 @@
 ##' @author Saulo F. S. Chaves (saulo.chaves at ufv.br)
 ##'
 
-crossvalid = function(data, y, gen, env, ETA, niter, burnin, seed, 
-                      nfolds, nrept, cv = 1, results = NULL,...){
+crossvalid = function(cvdata,  ETA, cv = 1, results = NULL,...){
   
-  data = data
-  data$gen = data[,gen]
-  data$env = data[,env]
-  data$trait = data[,y]
-  
+  cvdata = cvdata
+
   if (cv == 1){
-    set.seed(seed)
-    sets = split(
-      rep(
-        1:nfolds, length(unique(data$gen)) * nrept
-      )[order(runif(length(unique(data$gen)) * nrept))],
-      f = 1:nrept
-    )
-    means = lapply(sets, function(x){
-      means = data[,c('gen','env','trait')]
-      means = merge(means, data.frame(
-        gen = unique(data$gen),
-        set = x
-      ), by = gen)
-    })
-    names(means) = paste0('R',1:nrept)
-    cores = parallel::detectCores(logical = F)
-    division = split(paste0('R',1:nrept), f = 1:ceiling(nrept/cores))
-    cl = parallel::makeCluster(cores)
+    cl = parallel::makeCluster(parallel::detectCores(logical = F))
     parallel::clusterEvalQ(cl, library(BGLR))
-    parallel::clusterExport(cl, varlist = c('means', 'ETA', 'niter', 'burnin', 
-                                            'nfolds', 'nrept', 'y', 'cores', 
-                                            'division'))
+    parallel::clusterExport(cl, varlist = c('cvdata', 'ETA'))
     a = list()
-    for (i in 1:length(division)) {
-      a[[i]] = parallel::parLapply(cl = cl, means[division[[i]]], function(z){
-        lapply(1:nfolds, function(x){
+    for (i in 1:length(split(paste0('R',1:cvdata$cvinfo['nrept']), 
+                             f = 1:ceiling(cvdata$cvinfo['nrept']/ parallel::detectCores(logical = F))))) {
+      a[[i]] = parallel::parLapply(cl = cl, cvdata$cvdata[
+        split(paste0('R',1:cvdata$cvinfo['nrept']), 
+              f = 1:ceiling(cvdata$cvinfo['nrept']/parallel::detectCores(logical = F)))[[i]]
+        ], function(z){
+        lapply(1:cvdata$cvinfo['nfolds'], function(x){
           
-          yNA =  z[, y]
+          yNA = z$trait
           yNA[z$set == x] = NA
           
-          crossval = BGLR::BGLR(y = yNA, ETA = ETA, nIter = niter, burnIn = burnin, 
-                                verbose = F, ...)
+          crossval = BGLR::BGLR(y = yNA, ETA = ETA, nIter = cvdata$cvinfo['niter'], 
+                                burnIn = cvdata$cvinfo['burnin'], verbose = F)
           unlink("*.dat")
           
           cbind(
@@ -121,8 +102,10 @@ crossvalid = function(data, y, gen, env, ETA, niter, burnin, seed,
                    function(z) cor(z[,'trait'], z[,'yhat'])))
     })
     wapa = lapply(corr_env, function(x){
-      (sum((x/(1-x^2))/(tapply(data[, 'gen'], data[,'env'], length)-2)))/
-        (sum(1/(tapply(data[, 'gen'], data[, 'env'], length)-2)))
+      (sum((x/(1-x^2))/(tapply(cvdata$cvdata[[1]]$gen, 
+                               cvdata$cvdata[[1]]$env, length)-2)))/
+        (sum(1/(tapply(cvdata$cvdata[[1]]$gen, 
+                       cvdata$cvdata[[1]]$env, length)-2)))
     })
     mspe = lapply(reps, function(x) mean((x[,'yhat'] - x[, 'trait'])^2))
     slope = lapply(reps, function(x) unname(lm(x[,'trait'] ~ x[,'yhat'])$coefficients[2]))
@@ -143,38 +126,23 @@ crossvalid = function(data, y, gen, env, ETA, niter, burnin, seed,
       return(res)
     }
   }else if (cv == 2){
-    means = list()
-    for (j in 1:nrept) {
-      set.seed(seed+j)
-      means[[j]] = data[,c('gen','env','trait')]
-      means[[j]]$set = NA
-      for (i in unique(data$gen)) {
-        means[[j]][means[[j]]$gen == i,'set'] = sample(
-          1:nfolds, 
-          size = dim(means[[j]][means[[j]]$gen == i,])[1],
-          replace = dim(means[[j]][means[[j]]$gen == i,])[1] > nfolds
-        )
-      }
-    }
-    
-    names(means) = paste0('R',1:nrept)
-    cores = parallel::detectCores(logical = F)
-    division = split(paste0('R',1:nrept), f = 1:ceiling(nrept/cores))
-    cl = parallel::makeCluster(cores)
+    cl = parallel::makeCluster(parallel::detectCores(logical = F))
     parallel::clusterEvalQ(cl, library(BGLR))
-    parallel::clusterExport(cl, varlist = c('means', 'ETA', 'niter', 'burnin', 
-                                            'nfolds', 'nrept', 'cores', 
-                                            'division'))
+    parallel::clusterExport(cl, varlist = c('cvdata', 'ETA'))
     a = list()
-    for (i in 1:length(division)) {
-      a[[i]] = parallel::parLapply(cl = cl, means[division[[i]]], function(z){
-        lapply(1:nfolds, function(x){
+    for (i in 1:length(split(paste0('R',1:cvdata$cvinfo['nrept']), 
+                             f = 1:ceiling(cvdata$cvinfo['nrept']/parallel::detectCores(logical = F))))) {
+      a[[i]] = parallel::parLapply(cl = cl, cvdata$cvdata[
+        split(paste0('R',1:cvdata$cvinfo['nrept']), 
+              f = 1:ceiling(cvdata$cvinfo['nrept']/parallel::detectCores(logical = F)))[[i]]
+        ], function(z){
+        lapply(1:cvdata$cvinfo['nfolds'], function(x){
           
           yNA = z$trait
           yNA[z$set == x] = NA
           
-          crossval = BGLR::BGLR(y = yNA, ETA = ETA, nIter = niter, burnIn = burnin, 
-                                verbose = F, ...)
+          crossval = BGLR::BGLR(y = yNA, ETA = ETA, nIter = cvdata$cvinfo['niter'],
+                                burnIn = cvdata$cvinfo['burnin'], verbose = F, ...)
           unlink("*.dat")
           
           cbind(
@@ -202,8 +170,10 @@ crossvalid = function(data, y, gen, env, ETA, niter, burnin, seed,
                    function(z) cor(z[,'trait'], z[,'yhat'])))
     })
     wapa = lapply(corr_env, function(x){
-      (sum((x/(1-x^2))/(tapply(data[, 'gen'], data[,'env'], length)-2)))/
-        (sum(1/(tapply(data[, 'gen'], data[, 'env'], length)-2)))
+      (sum((x/(1-x^2))/(tapply(cvdata$cvdata[[1]]$gen, 
+                               cvdata$cvdata[[1]]$env, length)-2)))/
+        (sum(1/(tapply(cvdata$cvdata[[1]]$gen, 
+                       cvdata$cvdata[[1]]$env, length)-2)))
     })
     mspe = lapply(reps, function(x) mean((x[,'yhat'] - x[, 'trait'])^2))
     slope = lapply(reps, function(x) unname(lm(x[,'trait'] ~ x[,'yhat'])$coefficients[2]))
@@ -224,39 +194,24 @@ crossvalid = function(data, y, gen, env, ETA, niter, burnin, seed,
       return(res)
     }
   }else if (cv == 0){
-    means = list()
-    for (j in 1:nrept) {
-      set.seed(seed+j)
-      means[[j]] = data[,c('gen','env','trait')]
-      means[[j]]$set = NA
-      for (i in unique(data$gen)) {
-        means[[j]][means[[j]]$gen == i,'set'] = sample(
-          1:nfolds, 
-          size = dim(means[[j]][means[[j]]$gen == i,])[1],
-          replace = dim(means[[j]][means[[j]]$gen == i,])[1] > nfolds
-        )
-      }
-    }
-    
-    names(means) = paste0('R',1:nrept)
-    cores = parallel::detectCores(logical = F)
-    division = split(paste0('R',1:nrept), f = 1:ceiling(nrept/cores))
-    cl = parallel::makeCluster(cores)
+    cl = parallel::makeCluster(parallel::detectCores(logical = F))
     parallel::clusterEvalQ(cl, library(BGLR))
-    parallel::clusterExport(cl, varlist = c('means', 'ETA', 'niter', 'burnin', 
-                                            'nfolds', 'nrept', 'cores', 'data',
-                                            'division'))
+    parallel::clusterExport(cl, varlist = c('cvdata', 'ETA'))
     a = list()
-    for (i in 1:length(division)) {
-      a[[i]] = parallel::parLapply(cl = cl, X = means[division[[i]]], fun = function(z){
-        lapply(unique(data$env), function(w){
-          lapply(1:nfolds, function(x){
+    for (i in 1:length(split(paste0('R',1:cvdata$cvinfo['nrept']),
+                             f = 1:ceiling(cvdata$cvinfo['nrept']/parallel::detectCores(logical = F))))) {
+      a[[i]] = parallel::parLapply(cl = cl, X = cvdata$cvdata[
+        split(paste0('R',1:cvdata$cvinfo['nrept']),
+              f = 1:ceiling(cvdata$cvinfo['nrept']/parallel::detectCores(logical = F)))[[i]]
+        ], fun = function(z){
+        lapply(unique(cvdata$cvdata[[1]]$env), function(w){
+          lapply(1:cvdata$cvinfo['nfolds'], function(x){
             
             yNA = z$trait
             yNA[z$env == w] = NA
             
-            crossval = BGLR::BGLR(y = yNA, ETA = ETA, nIter = niter, burnIn = burnin, 
-                                  verbose = T, ...)
+            crossval = BGLR::BGLR(y = yNA, ETA = ETA, nIter = cvdata$cvinfo['niter'],
+                                  burnIn = cvdata$cvinfo['burnin'], verbose = T, ...)
             unlink("*.dat")
             
             cbind(
@@ -285,8 +240,10 @@ crossvalid = function(data, y, gen, env, ETA, niter, burnin, seed,
                    function(z) cor(z[,'trait'], z[,'yhat'])))
     })
     wapa = lapply(corr_env, function(x){
-      (sum((x/(1-x^2))/(tapply(data[, 'gen'], data[,'env'], length)-2)))/
-        (sum(1/(tapply(data[, 'gen'], data[, 'env'], length)-2)))
+      (sum((x/(1-x^2))/(tapply(cvdata$cvdata[[1]]$gen, 
+                               cvdata$cvdata[[1]]$env, length)-2)))/
+        (sum(1/(tapply(cvdata$cvdata[[1]]$gen, 
+                       cvdata$cvdata[[1]]$env, length)-2)))
     })
     mspe = lapply(reps, function(x) mean((x[,'yhat'] - x[, 'trait'])^2))
     slope = lapply(reps, function(x) unname(lm(x[,'trait'] ~ x[,'yhat'])$coefficients[2]))
@@ -308,40 +265,25 @@ crossvalid = function(data, y, gen, env, ETA, niter, burnin, seed,
     }
     
   }else if (cv == 00){
-    set.seed(seed)
-    sets = split(
-      rep(
-        1:nfolds, length(unique(data$gen)) * nrept
-      )[order(runif(length(unique(data$gen)) * nrept))],
-      f = 1:nrept
-    )
-    means = lapply(sets, function(x){
-      means = data[,c('gen','env','trait')]
-      means = merge(means, data.frame(
-        gen = unique(data$gen),
-        set = x
-      ), by = gen)
-    })
-    names(means) = paste0('R',1:nrept)
-    cores = parallel::detectCores(logical = F)
-    division = split(paste0('R',1:nrept), f = 1:ceiling(nrept/cores))
-    cl = parallel::makeCluster(cores)
+    cl = parallel::makeCluster(parallel::detectCores(logical = F))
     parallel::clusterEvalQ(cl, library(BGLR))
-    parallel::clusterExport(cl, varlist = c('means', 'ETA', 'niter', 'burnin', 
-                                            'nfolds', 'nrept', 'cores', 'data',
-                                            'division'))
+    parallel::clusterExport(cl, varlist = c('cvdata', 'ETA'))
     
     a = list()
-    for (i in 1:length(division)) {
-      a[[i]] = parallel::parLapply(cl = cl, X = means[division[[i]]], fun = function(z){
-        lapply(unique(data$env)[1:5], function(w){
-          lapply(1:nfolds, function(x){
+    for (i in 1:length(split(paste0('R',1:cvdata$cvinfo['nrept']), 
+                             f = 1:ceiling(cvdata$cvinfo['nrept']/parallel::detectCores(logical = F))))) {
+      a[[i]] = parallel::parLapply(cl = cl, X = cvdata$cvdata[
+        split(paste0('R',1:cvdata$cvinfo['nrept']),
+              f = 1:ceiling(cvdata$cvinfo['nrept']/parallel::detectCores(logical = F)))[[i]]
+        ], fun = function(z){
+        lapply(unique(cvdata$cvdata[[1]]$env), function(w){
+          lapply(1:cvdata$cvinfo['nfolds'], function(x){
             
             yNA = z$trait
             yNA[z$env == w & z$set == x] = NA
             
-            crossval = BGLR::BGLR(y = yNA, ETA = ETA, nIter = niter, burnIn = burnin, 
-                                  verbose = T, ...)
+            crossval = BGLR::BGLR(y = yNA, ETA = ETA, nIter = cvdata$cvinfo['niter'],
+                                  burnIn = cvdata$cvinfo['burnin'], verbose = T, ...)
             unlink("*.dat")
             
             cbind(
@@ -370,8 +312,10 @@ crossvalid = function(data, y, gen, env, ETA, niter, burnin, seed,
                    function(z) cor(z[,'trait'], z[,'yhat'])))
     })
     wapa = lapply(corr_env, function(x){
-      (sum((x/(1-x^2))/(tapply(data[, 'gen'], data[,'env'], length)-2)))/
-        (sum(1/(tapply(data[, 'gen'], data[, 'env'], length)-2)))
+      (sum((x/(1-x^2))/(tapply(cvdata$cvdata[[1]]$gen, 
+                               cvdata$cvdata[[1]]$env, length)-2)))/
+        (sum(1/(tapply(cvdata$cvdata[[1]]$gen,
+                       cvdata$cvdata[[1]]$env, length)-2)))
     })
     mspe = lapply(reps, function(x) mean((x[,'yhat'] - x[, 'trait'])^2))
     slope = lapply(reps, function(x) unname(lm(x[,'trait'] ~ x[,'yhat'])$coefficients[2]))
@@ -393,3 +337,55 @@ crossvalid = function(data, y, gen, env, ETA, niter, burnin, seed,
     }
   }
 }
+
+
+
+### Add description
+
+assignation = function(data, y, gen, env, seed, nfolds, nrept, cv = 1, 
+                       niter, burnin){
+  
+  data = data
+  data$gen = data[,gen]
+  data$env = data[,env]
+  data$trait = data[,y]
+  
+  if (cv == 1 | cv == 00){
+    set.seed(seed)
+    sets = split(
+      rep(
+        1:nfolds, length(unique(data$gen)) * nrept
+      )[order(runif(length(unique(data$gen)) * nrept))],
+      f = 1:nrept
+    )
+    cvdata = lapply(sets, function(x){
+      cvdata = data[,c('gen','env','trait')]
+      cvdata = merge(cvdata, data.frame(
+        gen = unique(data$gen),
+        set = x
+      ), by = gen)
+    })
+    names(cvdata) = paste0('R',1:nrept)
+    
+  }else if (cv == 2 || cv == 0){
+    cvdata = list()
+    for (j in 1:nrept) {
+      set.seed(seed+j)
+      cvdata[[j]] = data[,c('gen','env','trait')]
+      cvdata[[j]]$set = NA
+      for (i in unique(data$gen)) {
+        cvdata[[j]][cvdata[[j]]$gen == i,'set'] = sample(
+          1:nfolds, 
+          size = dim(cvdata[[j]][cvdata[[j]]$gen == i,])[1],
+          replace = dim(cvdata[[j]][cvdata[[j]]$gen == i,])[1] > nfolds
+        )
+      }
+    }
+    names(cvdata) = paste0('R',1:nrept)
+  }
+  cvinfo = c(nfolds = nfolds, nrept = nrept, cv = cv, niter = niter, burnin = burnin)
+  
+  return(list(cvdata = cvdata, cvinfo = cvinfo))
+}
+
+
