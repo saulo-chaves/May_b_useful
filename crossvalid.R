@@ -18,7 +18,8 @@
 ##' @param nfolds An integer indicating the number of folds for the cross-validation
 ##' @param nrept An integer indicating the number of times the cross-validation 
 ##' should repeat
-##' @param cv A CHARACTER: 'cv1' for CV1, 'cv2' for CV2, 'cv0' for CV0, and 'cv00' for CV00
+##' @param cv A CHARACTER: 'cv1' for CV1, 'cv2' for CV2, 'loo_cv0' for classic CV0 using a
+##' leave-one-out scheme, and 'loo_cv00' for CV00 using a leave-one-out scheme
 ##' 
 ##' @return The function will return a dataframe named `cvinfo` with the 
 ##' information necessary to perform the cross-validation using [BGLR::BGLR()], 
