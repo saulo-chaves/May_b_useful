@@ -4,9 +4,9 @@ Scripts and function that may be useful in the future
 ## Tools
 "recod" function - straigthfoward way for recoding the data set
 
-"crossvalid" function - Perform cross-validations to test the predictive ability of genomic prediction models: CV1, CV2, CV0 and CV00
+"assignation" function - Divides the data into fold within repetitions to perform cross-validation
 
-"crossvalid_p" function - Same as "crossvalid", but with parallelization
+"crossvalid" function - Performs cross-validations to test the predictive ability of genomic prediction models: CV1, CV2, CV0 and CV00
 
 ## Disclaimer
 
