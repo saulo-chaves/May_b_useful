@@ -16,6 +16,7 @@ fa.outs = function(model, name.env, name.gen){
   rownames(mat.loadings) = levels(data[, name.env])
   mat.loadings.star = mat.loadings %*% svd(mat.loadings)$v
   if(sum(mat.loadings.star[,1] < 0)/dim(mat.loadings.star)[1] > .2) mat.loadings.star = mat.loadings.star * -1
+  colnames(mat.loadings.star) = unique(load$fa)
   
   
   Gvcov = tcrossprod(mat.loadings.star) + diag(var)
