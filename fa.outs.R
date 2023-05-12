@@ -16,7 +16,7 @@ fa.outs = function(model, name.env, name.gen){
   rownames(mat.loadings) = levels(data[, name.env])
   mat.loadings.star = mat.loadings %*% svd(mat.loadings)$v
   if(sum(mat.loadings.star[,1] < 0)/dim(mat.loadings.star)[1] > .2) mat.loadings.star = mat.loadings.star * -1
-  colnames(mat.loadings.star) = unique(load$fa)
+  
   
   Gvcov = tcrossprod(mat.loadings.star) + diag(var)
   Gcor = cov2cor(Gvcov)
@@ -43,12 +43,19 @@ fa.outs = function(model, name.env, name.gen){
                          ncol = length(unique(scores$fa)),
                          dimnames = list(levels(data[, name.gen]), unique(load$fa)))
   
-  modpred = predict(model, classify = paste(name.env, name.gen, sep = ':'))
+  modpred = predict(model, classify = paste(name.env, name.gen, sep = ':'), sed = T)
   blups = modpred$pvals
   blups = blups[,-5]
   blups$marginal = kronecker(mat.loadings.star, diag(num.gen)) %*% scor.vec.star
   colnames(blups)[which(colnames(blups) == 'predicted.value')] = 'conditional'
   
+  colnames(modpred$sed) = rownames(modpred$sed) = paste(modpred$pvals[,1], modpred$pvals[,2], sep = '_')
+  
+  H2 = NULL
+  for (i in levels(data[, name.gen])) {
+    vd = (modpred$sed[grep(i, rownames(modpred$sed)), grep(i, colnames(modpred$sed))])^2
+    H2[i] = 1-(mean(vd[upper.tri(vd ,diag = F)])/(2*diag(Gvcov)[i]))
+  }
   
   results = list('rot.loads' = mat.loadings.star, 
                  'Gvcov' = Gvcov, 
@@ -61,17 +68,8 @@ fa.outs = function(model, name.env, name.gen){
                  ),
                  'expvar_j' = expvar.j,
                  "rot.scores" = scor.mat.star, 
-                 'blups' = blups)
+                 'blups' = blups,
+                 'H2' = H2)
   
   return(results)
 }
-
-
-
-
-
-
-
-
-
-
