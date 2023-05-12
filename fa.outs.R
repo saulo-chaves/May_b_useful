@@ -52,7 +52,7 @@ fa.outs = function(model, name.env, name.gen){
   colnames(modpred$sed) = rownames(modpred$sed) = paste(modpred$pvals[,1], modpred$pvals[,2], sep = '_')
   
   H2 = NULL
-  for (i in levels(data[, name.gen])) {
+  for (i in levels(data[, name.env])) {
     vd = (modpred$sed[grep(i, rownames(modpred$sed)), grep(i, colnames(modpred$sed))])^2
     H2[i] = 1-(mean(vd[upper.tri(vd ,diag = F)])/(2*diag(Gvcov)[i]))
   }
