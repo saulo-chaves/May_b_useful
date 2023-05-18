@@ -1,5 +1,5 @@
 # May_b_useful
-Scripts and function that may be useful in the future
+Scripts and functions that may be useful in the future
 
 ## Tools
 "recod" function - straigthfoward way for recoding the data set
@@ -12,6 +12,6 @@ Scripts and function that may be useful in the future
 
 ## Disclaimer
 
-This is a work in progress, so any comments or tips are most welcome. 
+This is a work in progress, so any comments or suggestions are most welcome. 
 
 
