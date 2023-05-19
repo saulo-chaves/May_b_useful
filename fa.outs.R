@@ -75,7 +75,7 @@ fa.outs = function(model, name.env, name.gen){
   ]
   scores$fa = regmatches(rownames(scores), regexpr("Comp\\d+", rownames(scores)))
   scor.vec = do.call(c, lapply(split(scores, f = scores$fa), function(x) x[,'solution']))
-  scor.vec.star = -kronecker(t(svd(mat.loadings)$v), diag(num.gen)) %*% scor.vec
+  scor.vec.star = kronecker(t(svd(mat.loadings)$v), diag(num.gen)) %*% scor.vec
   if(sum((mat.loadings %*% svd(mat.loadings)$v)[,1] < 0)/dim((mat.loadings %*% svd(mat.loadings)$v))[1] > .2) scor.vec.star = scor.vec.star * -1
   scor.mat.star = matrix(scor.vec.star, nrow = num.gen, ncol = length(unique(scores$fa)),
                          dimnames = list(levels(data[, name.gen]), unique(load$fa)))
