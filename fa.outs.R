@@ -47,14 +47,13 @@ fa.outs = function(model, name.env, name.gen){
   load = sum$varcomp[grep('fa\\d+', rownames(sum$varcomp)),]
   var = sum$varcomp[grep('var', rownames(sum$varcomp)),1]
   
-  # Loadings rotation via SVD
+  # Loadings' rotation via SVD
   load$fa = regmatches(rownames(load), regexpr("fa\\d+", rownames(load)))
   mat.loadings = do.call(cbind, lapply(split(load[,c('fa','component')], f = load$fa), 
                                        function(x) x[,'component']))
   rownames(mat.loadings) = levels(data[, name.env])
   mat.loadings.star = mat.loadings %*% svd(mat.loadings)$v
-  if(sum(mat.loadings.star[,1] < 0)/dim(mat.loadings.star)[1] > .5) mat.loadings.star = mat.loadings.star * -1
-  colnames(mat.loadings.star) = unique(load$fa)
+  if(sum(mat.loadings.star[,1] < 0)/dim(mat.loadings.star)[1] > .2) mat.loadings.star = mat.loadings.star * -1
   
   # Full variance-covariance genetic matrix and genetic correlation matrix
   Gvcov = tcrossprod(mat.loadings.star) + diag(var)
@@ -70,14 +69,56 @@ fa.outs = function(model, name.env, name.gen){
     }
   }
   
+  # Average semivariances ratio
+  lambdacross = tcrossprod(mat.loadings.star)
+  fullsv = list()
+  for (i in levels(data[, name.env])) {
+    semivar = matrix(nrow = num.env, ncol = 3, 
+                     dimnames = list(levels(data[, name.env]), 
+                                     c('i', 'j', 'semivar')))
+    for (j in levels(data[, name.env])) {
+      semivar[j,] = c(i, j, .5 * (lambdacross[i,i] + lambdacross[j,j]) - 
+                        lambdacross[i,j])
+    }
+    fullsv[[i]] = semivar
+    rm(semivar)
+  }
+  
+  fullsv = data.frame(do.call(rbind, fullsv))
+  fullsv$semivar = as.numeric(fullsv$semivar)
+  fullsv = reshape(data = fullsv, timevar = 'i', idvar = 'j', direction = 'wide')[,-1]
+  colnames(fullsv) = sub('semivar.', '', colnames(fullsv))
+  lambda_ASV = 2/(nrow(fullsv) * (nrow(fullsv)- 1)) * sum(fullsv[upper.tri(fullsv)])
+  
+  rm(fullsv)
+  
+  fullsv = list()
+  for (i in levels(data[, name.env])) {
+    semivar = matrix(nrow = num.env, ncol = 3, 
+                     dimnames = list(levels(data[, name.env]), 
+                                     c('i', 'j', 'semivar')))
+    for (j in levels(data[, name.env])) {
+      semivar[j,] = c(i,j,
+                      0.5*(Gvcov[i,i] + Gvcov[j,j]) - Gvcov[i,j])
+    }
+    fullsv[[i]] = semivar
+  }
+  fullsv = data.frame(do.call(rbind, fullsv))
+  fullsv$semivar = as.numeric(fullsv$semivar)
+  fullsv = reshape(data = fullsv, timevar = 'i', idvar = 'j', direction = 'wide')[,-1]
+  colnames(fullsv) = sub('semivar.', '', colnames(fullsv))
+  G_ASV = 2/(nrow(fullsv) * (nrow(fullsv)- 1)) * sum(fullsv[upper.tri(fullsv)])
+  
+  ASVR = lambda_ASV/G_ASV 
+  
   # Scores rotation via SVD
   scores = data.frame(summary(model, coef = T)$coef.random)[
     grep('Comp', rownames(data.frame(summary(model, coef = T)$coef.random))),
   ]
   scores$fa = regmatches(rownames(scores), regexpr("Comp\\d+", rownames(scores)))
   scor.vec = do.call(c, lapply(split(scores, f = scores$fa), function(x) x[,'solution']))
-  scor.vec.star = kronecker(t(svd(mat.loadings)$v), diag(num.gen)) %*% scor.vec
-  if(sum((mat.loadings %*% svd(mat.loadings)$v)[,1] < 0)/dim((mat.loadings %*% svd(mat.loadings)$v))[1] > .5) scor.vec.star = scor.vec.star * -1
+  scor.vec.star = -kronecker(t(svd(mat.loadings)$v), diag(num.gen)) %*% scor.vec
+  if(sum((mat.loadings %*% svd(mat.loadings)$v)[,1] < 0)/dim((mat.loadings %*% svd(mat.loadings)$v))[1] > .2) scor.vec.star = scor.vec.star * -1
   scor.mat.star = matrix(scor.vec.star, nrow = num.gen, ncol = length(unique(scores$fa)),
                          dimnames = list(levels(data[, name.gen]), unique(load$fa)))
   
@@ -101,7 +142,8 @@ fa.outs = function(model, name.env, name.gen){
                  'Gvcov' = Gvcov, 
                  'Gcor' = Gcor, 
                  'diagnostics' = c(
-                   expvar = round(expvar*100,3), 
+                   expvar = round(expvar*100,3),
+                   ASVR = round(ASVR * 100, 3),
                    aic = round(sum$aic,3), 
                    bic = round(sum$bic,3),
                    logl = round(sum$loglik,3)
