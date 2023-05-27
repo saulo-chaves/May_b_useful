@@ -53,7 +53,7 @@ fa.outs = function(model, name.env, name.gen){
                                        function(x) x[,'component']))
   rownames(mat.loadings) = levels(data[, name.env])
   mat.loadings.star = mat.loadings %*% svd(mat.loadings)$v
-  if(sum(mat.loadings.star[,1] < 0)/dim(mat.loadings.star)[1] > .2) mat.loadings.star = mat.loadings.star * -1
+  if(sum(mat.loadings.star[,1] < 0)/dim(mat.loadings.star)[1] > .5) mat.loadings.star = mat.loadings.star * -1
   
   # Full variance-covariance genetic matrix and genetic correlation matrix
   Gvcov = tcrossprod(mat.loadings.star) + diag(var)
@@ -117,8 +117,8 @@ fa.outs = function(model, name.env, name.gen){
   ]
   scores$fa = regmatches(rownames(scores), regexpr("Comp\\d+", rownames(scores)))
   scor.vec = do.call(c, lapply(split(scores, f = scores$fa), function(x) x[,'solution']))
-  scor.vec.star = -kronecker(t(svd(mat.loadings)$v), diag(num.gen)) %*% scor.vec
-  if(sum((mat.loadings %*% svd(mat.loadings)$v)[,1] < 0)/dim((mat.loadings %*% svd(mat.loadings)$v))[1] > .2) scor.vec.star = scor.vec.star * -1
+  scor.vec.star = kronecker(t(svd(mat.loadings)$v), diag(num.gen)) %*% scor.vec
+  if(sum((mat.loadings %*% svd(mat.loadings)$v)[,1] < 0)/dim((mat.loadings %*% svd(mat.loadings)$v))[1] > .5) scor.vec.star = scor.vec.star * -1
   scor.mat.star = matrix(scor.vec.star, nrow = num.gen, ncol = length(unique(scores$fa)),
                          dimnames = list(levels(data[, name.gen]), unique(load$fa)))
   
