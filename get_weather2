@@ -5,8 +5,8 @@
 ##                 The original one can be found at: https://github.com/allogamous/EnvRtype                           ##
 ########################################################################################################################
 
-get_weather2 = function (env.id = NULL, lat = NULL, lon = NULL, start.day = NULL, 
-                         end.day = NULL, variables.names = NULL, dir.path = NULL, 
+get_weather2 = function (env.id = NULL, lat = NULL, lon = NULL, start.year = NULL, 
+                         end.year = NULL, variables.names = NULL, dir.path = NULL, 
                          save = FALSE, country = NULL, 
                          parallel = TRUE, workers = NULL, chunk_size = 29,
                          sleep = 60) {
@@ -19,12 +19,12 @@ get_weather2 = function (env.id = NULL, lat = NULL, lon = NULL, start.day = NULL
   if (!requireNamespace("foreach", quietly = TRUE)) {
     utils::install.packages("foreach")
   }
-  get_helper <- function(lon, lat, variables.names, start.day, 
-                         end.day, env.id, save) {
+  get_helper <- function(lon, lat, variables.names, start.year, 
+                         end.year, env.id, save) {
     CL = data.frame(nasapower::get_power(community = "ag", 
                                          lonlat = c(lon, lat), 
                                          pars = variables.names, 
-                                         dates = c(start.day, end.day), 
+                                         dates = c(start.year, end.year), 
                                          temporal_api = 'monthly'))
     cor_rain_name = which(names(CL) %in% "PRECTOTCORR")
     names(CL)[cor_rain_name] = "PRECTOT"
@@ -124,8 +124,8 @@ get_weather2 = function (env.id = NULL, lat = NULL, lon = NULL, start.day = NULL
         init_time <- Sys.time()
       }
       results[[i]] <- get_helper(lon = lon[i], lat = lat[i], 
-                                 variables.names = variables.names, start.day = start.day, 
-                                 end.day = end.day, env.id = env.id[i], save = save)
+                                 variables.names = variables.names, start.year = start.year, 
+                                 end.year = end.year, env.id = env.id[i], save = save)
       msg <- paste0("Env ", env.id[i], " (", i, "/", length(env.id), 
                     ") ", "downloaded")
       run_progress(pb, actual = i, text = msg)
@@ -147,15 +147,15 @@ get_weather2 = function (env.id = NULL, lat = NULL, lon = NULL, start.day = NULL
       lon_par_tmp <- lon_par[[i]]
       parallel::clusterExport(clust, varlist = c("get_helper", 
                                                  "lat_par_tmp", "lon_par_tmp", "variables.names", 
-                                                 "start.day", "end.day", "env.id_par_tmp"), 
+                                                 "start.year", "end.year", "env.id_par_tmp"), 
                               envir = environment())
       length_chunk <- length(env.id_par[[i]])
       temp <- parallel::parLapply(clust, 1:length_chunk, 
                                   function(j) {
                                     get_helper(lon = lon_par_tmp[j], lat = lat_par_tmp[j], 
                                                variables.names = variables.names, 
-                                               start.day = start.day, 
-                                               end.day = end.day, 
+                                               start.year = start.year, 
+                                               end.year = end.year, 
                                                env.id = env.id_par_tmp[j], 
                                                save = save)
                                   })
