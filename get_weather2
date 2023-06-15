@@ -1,0 +1,204 @@
+get_weather2 = function (env.id = NULL, lat = NULL, lon = NULL, start.day = NULL, 
+                         end.day = NULL, variables.names = NULL, dir.path = NULL, 
+                         save = FALSE, country = NULL, 
+                         parallel = TRUE, workers = NULL, chunk_size = 29,
+                         sleep = 60) {
+  if (!requireNamespace("doParallel", quietly = TRUE)) {
+    utils::install.packages("doParallel")
+  }
+  if (!requireNamespace("parallel", quietly = TRUE)) {
+    utils::install.packages("doParallel")
+  }
+  if (!requireNamespace("foreach", quietly = TRUE)) {
+    utils::install.packages("foreach")
+  }
+  get_helper <- function(lon, lat, variables.names, start.day, 
+                         end.day, env.id, save) {
+    CL = data.frame(nasapower::get_power(community = "ag", 
+                                         lonlat = c(lon, lat), 
+                                         pars = variables.names, 
+                                         dates = c(start.day, end.day), 
+                                         temporal_api = 'monthly'))
+    cor_rain_name = which(names(CL) %in% "PRECTOTCORR")
+    names(CL)[cor_rain_name] = "PRECTOT"
+    CL$env <- env.id
+    CL <- CL[, c(which(colnames(CL) == "env"), which(colnames(CL) != 
+                                                       "env"))]
+    if (isTRUE(save)) {
+      utils::write.csv(file = paste(env.id, ".csv", sep = ""), 
+                       row.names = F, x = CL)
+    }
+    return(CL)
+  }
+  sec_to_hms <- function(t) {
+    paste(formatC(t%/%(60 * 60)%%24, width = 2, format = "d", 
+                  flag = "0"), formatC(t%/%60%%60, width = 2, format = "d", 
+                                       flag = "0"), formatC(t%%60, width = 2, 
+                                                            format = "d", 
+                                                            flag = "0"), 
+          sep = ":")
+  }
+  progress <- function(min = 0, max = 100, leftd = "|", rightd = "|", 
+                       char = "=", style = 2, width = getOption("width"), 
+                       time = Sys.time()) {
+    return(list(min = min, max = max, leftd = leftd, rightd = rightd, 
+                char = char, style = style, width = width, time = time))
+  }
+  run_progress <- function(pb, actual, text = "", digits = 0, 
+                           sleep = 0) {
+    Sys.sleep(sleep)
+    elapsed <- sec_to_hms(as.numeric(difftime(Sys.time(), 
+                                              pb$time, units = "secs")))
+    temp <- switch(pb$style, list(extra = nchar(text) + 
+                                    nchar(pb$leftd) + nchar(pb$rightd), 
+                                  text = paste(text,paste(pb$leftd, "%s%s", 
+                                                          pb$right, sep = ""))), 
+                   list(extra = nchar(text) + nchar(pb$leftd) + nchar(pb$rightd) + 6, 
+                        text = paste(text, paste(pb$leftd, "%s%s", pb$right, sep = ""), 
+                                     "% s%%")), 
+                   list(extra = nchar(text) + nchar(pb$leftd) + nchar(pb$rightd) + 
+                          9, text = paste(text, paste(pb$leftd, "%s%s", 
+                                                      pb$rightd, sep = ""), elapsed)), 
+                   list(extra = nchar(text) + nchar(pb$leftd) + nchar(pb$rightd) + 15, 
+                        text = paste(text, 
+                                                                                                                                                    paste(pb$leftd, "%s%s", pb$rightd, sep = ""),
+                                     "% s%%", elapsed)))
+    step <- round(actual/pb$max * (pb$width - temp$extra))
+    cat(sprintf(temp$text, strrep(pb$char, step), strrep(" ", pb$width - step - 
+                                                           temp$extra),
+                round(actual/pb$max *100, digits = digits)), "\r")
+    if (actual == pb$max) {
+      cat("\n")
+    }
+  }
+  split_chunk <- function(vec, length) {
+    split(vec, ceiling(seq_along(vec)/length))
+  }
+  cat("------------------------------------------------ \n")
+  cat("ATTENTION: This function requires internet access \n")
+  cat("------------------------------------------------  \n")
+  cat("Connecting to the NASA POWER API Client, Sparks et al 2018 \n")
+  cat("https://docs.ropensci.org/nasapower \n")
+  cat("------------------------------------------------  \n")
+  if (is.null(env.id)) {
+    env.id <- paste0("env", seq_along(lat))
+  }
+  if (!(is.character(env.id) || is.factor(env.id))) {
+    stop("env.id should be a vector of characters (e.g. 'env1') or factors")
+  }
+  if (!requireNamespace("nasapower", quietly = TRUE)) {
+    utils::install.packages("nasapower")
+  }
+  if (!requireNamespace("plyr", quietly = TRUE)) {
+    utils::install.packages("plyr")
+  }
+  if (is.null(dir.path)) {
+    dir.path = getwd()
+  }
+  if (is.null(variables.names)) {
+    variables.names = c("T2M", "T2M_MAX", "T2M_MIN", "PRECTOTCORR", 
+                        "WS2M", "RH2M", "T2MDEW", "ALLSKY_SFC_LW_DWN", "ALLSKY_SFC_SW_DWN")
+  }
+  variables.names[grepl(variables.names, pattern = "PRECTOT")] = "PRECTOTCORR"
+  env.id = as.factor(env.id)
+  if (parallel == FALSE) {
+    results <- list()
+    pb <- progress(max = length(env.id), style = 4)
+    init_time <- Sys.time()
+    iter <- 0
+    for (i in 1:length(env.id)) {
+      iter <- iter + 1
+      query_issue <- as.numeric(difftime(Sys.time(), init_time, 
+                                         units = "secs")) > 60
+      if (iter >= 30 & query_issue) {
+        message("Waiting ", sleep, "s for a new query to the API.")
+        Sys.sleep(sleep)
+        iter <- 0
+        init_time <- Sys.time()
+      }
+      results[[i]] <- get_helper(lon = lon[i], lat = lat[i], 
+                                 variables.names = variables.names, start.day = start.day, 
+                                 end.day = end.day, env.id = env.id[i], save = save)
+      msg <- paste0("Env ", env.id[i], " (", i, "/", length(env.id), 
+                    ") ", "downloaded")
+      run_progress(pb, actual = i, text = msg)
+    }
+  }
+  if (parallel == TRUE) {
+    env.id_par = split_chunk(env.id, length = chunk_size)
+    lat_par = split_chunk(lat, length = chunk_size)
+    lon_par = split_chunk(lon, length = chunk_size)
+    nworkers <- ifelse(is.null(workers), trunc(parallel::detectCores() * 
+                                                 0.9), workers)
+    clust <- parallel::makeCluster(nworkers)
+    on.exit(parallel::stopCluster(clust))
+    results <- list()
+    pb <- progress(max = length(env.id_par), style = 4)
+    for (i in 1:length(env.id_par)) {
+      env.id_par_tmp <- env.id_par[[i]]
+      lat_par_tmp <- lat_par[[i]]
+      lon_par_tmp <- lon_par[[i]]
+      parallel::clusterExport(clust, varlist = c("get_helper", 
+                                                 "lat_par_tmp", "lon_par_tmp", "variables.names", 
+                                                 "start.day", "end.day", "env.id_par_tmp"), 
+                              envir = environment())
+      length_chunk <- length(env.id_par[[i]])
+      temp <- parallel::parLapply(clust, 1:length_chunk, 
+                                  function(j) {
+                                    get_helper(lon = lon_par_tmp[j], lat = lat_par_tmp[j], 
+                                               variables.names = variables.names, 
+                                               start.day = start.day, 
+                                               end.day = end.day, 
+                                               env.id = env.id_par_tmp[j], 
+                                               save = save)
+                                  })
+      results[[i]] <- plyr::ldply(temp)
+      if (i < length(env.id_par)) {
+        message("Waiting ", sleep, "s for a new query to the API.")
+        msg <- paste0("Chunk ", i, "/", length(env.id_par), 
+                      " (", length_chunk, " points) downloaded")
+        run_progress(pb, actual = i, text = msg)
+        Sys.sleep(sleep)
+      }
+    }
+    message("\nNASA POWER: Done!")
+  }
+  df <- plyr::ldply(results)
+  return(df)
+}
+
+adjust_for_Tbase <- function(x, Tbase1) {
+  ifelse(test = x < Tbase1, yes = Tbase1, no = x)
+}
+adjust_for_Tbase2 <- function(x, Tbase2) {
+  ifelse(test = x > Tbase2, yes = Tbase2, no = x)
+}
+F.RUE.Temperature = function(Tbase1, Tbase2, Tmed, Topt1, 
+                             Topt2) {
+  n = length(Tmed)
+  FTAR = rep(1, n)
+  for (i in 1:n) {
+    if (Tmed[i] < Topt1) {
+      FTAR[i] = (Tmed[i] - Tbase1)/(Topt1 - Tbase1)
+    }
+    if (Tmed[i] > Topt2) {
+      FTAR[i] = (Tmed[i] - Topt2)/(Tbase2 - Topt2)
+    }
+  }
+  return(FTAR)
+}
+AtmP <- function(elevation = 600) return(101.3 * ((293 - 0.0065 * elevation)/
+                                                    293)^5.26)
+teten <- function(Temp) return(0.61078 * exp((17.27 * Temp)/(Temp + 237.3)))
+psyco <- function(atm) return((((1.013 * 0.001) * atm)/0.622 * 
+                                 2.45) * 0.665 * atm * 0.001)
+slope.vapor <- function(Tmed){
+ return(4098 * (0.6108 * exp((17.27 * Tmed)/(Tmed + 237.3)))/(Tmed + 237.2)^2) 
+} 
+EToPT <- function(alfa = 1.26, Srad, G = NULL, slope, psyc) {
+  if (is.null(G)) {
+    G = 0
+  }
+  W = slope/(slope + psyc)
+  return(alfa * W * (Srad - G) * 0.408)
+}
