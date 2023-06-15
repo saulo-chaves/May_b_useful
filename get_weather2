@@ -1,3 +1,10 @@
+########################################################################################################################
+##                                                  DISCLAIMER                                                        ##
+##                 These functions were modified from EnvRtype, written by Dr. Germano Costa-Neto                     ##
+##         We modified these functions to download and process monthly data, instead of daily averages                ##   
+##                 The original one can be found at: https://github.com/allogamous/EnvRtype                           ##
+########################################################################################################################
+
 get_weather2 = function (env.id = NULL, lat = NULL, lon = NULL, start.day = NULL, 
                          end.day = NULL, variables.names = NULL, dir.path = NULL, 
                          save = FALSE, country = NULL, 
