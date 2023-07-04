@@ -1,14 +1,18 @@
 ## Function recod
 ##
-##' This function performs the recodification of a specific factor 
-##' in the data set. It adds a new column with the coded levels to
-##' the data set
+##' @title Factor recoding 
+##' 
+##' @description
+##' The functions of `ProbBreed` works with alphanumeric factors (for e.g., "G01"). 
+##' `recod` was built to perform the recoding of a factor's levels in the dataset. It 
+##' adds a new column with the newly coded levels, keeping the original names for 
+##' reference.
 ##'
-##' @title Easy factor recodification
-##' @param data dataframe A dataframe containing the factor to be recoded
-##' @param name.fact string Name of the column containing the factor to be recoded
-##' @param cod string String that will appear before the numbers in the new code. Ex: "G001"
-##' @return The function returns the datagrame with a new column containing the recoded levels
+##' @param data  A data frame containing the observations
+##' @param name.fact A string Name of the column containing the factor to be recoded
+##' @param cod A string Letter that will appear before the numbers in the new code. For e.g.: "G01"
+##' @return The function returns the same data frame, but with a new column 
+##' with the prefix "cod." containing the recoded levels
 ##' 
 ##' @author Saulo F. S. Chaves (saulo.chaves at ufv.br)
 ##' 
