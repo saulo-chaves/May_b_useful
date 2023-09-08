@@ -124,7 +124,7 @@ fa.outs = function(model, name.env, name.gen){
                          dimnames = list(levels(data[, name.gen]), unique(load$fa)))
   
   # eBLUPs
-  modpred = predict(model, classify = paste(name.env, name.gen, sep = ':'), sed = T)
+  modpred = predict(model, classify = paste(name.gen, name.env, sep = ':'), sed = T)
   blups = modpred$pvals
   blups = blups[,-5]
   blups$marginal = kronecker(mat.loadings.star, diag(num.gen)) %*% scor.vec.star
