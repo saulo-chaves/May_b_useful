@@ -132,6 +132,7 @@ fa.outs = function(model, name.env, name.gen){
     name.gen = rep(levels(data[, name.gen]), times = nlevels(data[, name.env])), 
     marginal = kronecker(mat.loadings.star, diag(num.gen)) %*% scor.vec.star
     )
+  colnames(temp) = c(name.env, name.gen, 'marginal')
   blups = merge(blups, temp, by = c(name.env, name.gen))
   colnames(blups)[which(colnames(blups) == 'predicted.value')] = 'conditional'
   
