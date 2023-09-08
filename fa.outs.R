@@ -127,7 +127,12 @@ fa.outs = function(model, name.env, name.gen){
   modpred = predict(model, classify = paste(name.gen, name.env, sep = ':'), sed = T)
   blups = modpred$pvals
   blups = blups[,-5]
-  blups$marginal = kronecker(mat.loadings.star, diag(num.gen)) %*% scor.vec.star
+  temp = data.frame(
+    name.env = rep(levels(data[, name.env]), each = nlevels(data[, name.gen])),
+    name.gen = rep(levels(data[, name.gen]), times = nlevels(data[, name.env])), 
+    marginal = kronecker(mat.loadings.star, diag(num.gen)) %*% scor.vec.star
+    )
+  blups = merge(blups, temp, by = c(name.env, name.gen))
   colnames(blups)[which(colnames(blups) == 'predicted.value')] = 'conditional'
   
   # Environment-wise generalized heritabilities
