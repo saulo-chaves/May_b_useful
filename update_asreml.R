@@ -4,10 +4,10 @@ up.mod = function(model){
   require(asreml)
   repeat{
     if(any(na.exclude(model$vparameters.pc) >= 1)) {
-      model = update(model)
+      model = suppressWarnings(update(model))
     }else{
       break
     }
   }
-  return(mod)
+  return(model)
 }
