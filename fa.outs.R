@@ -23,9 +23,7 @@
 ##' \item \code{expvar.j}: a matrix containing the percentage of explained variance per environment, 
 ##' by each factor.
 ##' \item \code{rot.scores}: a matrix with the rotated scores.
-##' \item \code{blups}: a dataframe with the conditional eBLUPs (and their standard error), and 
-##' marginal eBLUPs (i.e., disregarding the specific effects).
-##' \item \code{H2}: a vector with the environment-wise generalized heritabilities.
+##' \item \code{blups}: a data frame with the marginal eBLUPs (i.e., disregarding the specific effects).
 ##' }
 ##' 
 ##' @details
