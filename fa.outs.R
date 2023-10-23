@@ -129,26 +129,26 @@ fa.outs = function(model, name.env, name.gen){
   ASVR = lambda_ASV/G_ASV
 
   # eBLUPs
-  modpred = predict(model, classify = paste(name.gen, name.env, sep = ':'), sed = T)
-  blups = modpred$pvals
-  blups = blups[,-5]
-  temp = data.frame(
+  # modpred = predict(model, classify = paste(name.gen, name.env, sep = ':'), sed = T)
+  # blups = modpred$pvals
+  # blups = blups[,-5]
+  blups = data.frame(
     name.env = rep(levels(data[, name.env]), each = nlevels(data[, name.gen])),
     name.gen = rep(levels(data[, name.gen]), times = nlevels(data[, name.env])), 
     marginal = kronecker(mat.loadings.star, diag(num.gen)) %*% scor.vec.star
     )
-  colnames(temp) = c(name.env, name.gen, 'marginal')
-  blups = merge(blups, temp, by = c(name.env, name.gen))
-  colnames(blups)[which(colnames(blups) == 'predicted.value')] = 'conditional'
+  colnames(blups) = c(name.env, name.gen, 'marginal')
+  # blups = merge(blups, temp, by = c(name.env, name.gen))
+  # colnames(blups)[which(colnames(blups) == 'predicted.value')] = 'conditional'
   
   # Environment-wise generalized heritabilities
-  colnames(modpred$sed) = rownames(modpred$sed) = paste(modpred$pvals[,1], modpred$pvals[,2], sep = '_')
-  
-  H2 = NULL
-  for (i in levels(data[, name.env])) {
-    vd = (modpred$sed[grep(i, rownames(modpred$sed)), grep(i, colnames(modpred$sed))])^2
-    H2[i] = 1-(mean(vd[upper.tri(vd ,diag = F)])/(2*diag(Gvcov)[i]))
-  }
+  # colnames(modpred$sed) = rownames(modpred$sed) = paste(modpred$pvals[,1], modpred$pvals[,2], sep = '_')
+  # 
+  # H2 = NULL
+  # for (i in levels(data[, name.env])) {
+  #   vd = (modpred$sed[grep(i, rownames(modpred$sed)), grep(i, colnames(modpred$sed))])^2
+  #   H2[i] = 1-(mean(vd[upper.tri(vd ,diag = F)])/(2*diag(Gvcov)[i]))
+  # }
   
   results = list('rot.loads' = mat.loadings.star, 
                  'Gvcov' = Gvcov, 
@@ -162,8 +162,7 @@ fa.outs = function(model, name.env, name.gen){
                  ),
                  'expvar_j' = expvar.j,
                  "rot.scores" = scor.mat.star, 
-                 'blups' = blups,
-                 'H2' = H2)
+                 'blups.marg' = blups)
   
   return(results)
 }
