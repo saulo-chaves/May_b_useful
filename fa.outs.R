@@ -23,7 +23,9 @@
 ##' \item \code{expvar.j}: a matrix containing the percentage of explained variance per environment, 
 ##' by each factor.
 ##' \item \code{rot.scores}: a matrix with the rotated scores.
-##' \item \code{blups}: a data frame with the marginal eBLUPs (i.e., disregarding the specific effects).
+##' \item \code{blups}: a dataframe with the conditional eBLUPs (and their standard error), and 
+##' marginal eBLUPs (i.e., disregarding the specific effects).
+##' \item \code{H2}: a vector with the environment-wise generalized heritabilities.
 ##' }
 ##' 
 ##' @details
@@ -43,15 +45,16 @@ fa.outs = function(model, name.env, name.gen){
   num.gen = nlevels(data[, name.gen])
   sum = summary(model)
   load = sum$varcomp[grep('fa\\d+', rownames(sum$varcomp)),]
-  var = sum$varcomp[grep('var', rownames(sum$varcomp)),1]
+  var = sum$varcomp[grep('var', rownames(sum$varcomp)), 1]
   
   # Loadings' rotation via SVD
   load$fa = regmatches(rownames(load), regexpr("fa\\d+", rownames(load)))
   mat.loadings = do.call(cbind, lapply(split(load[,c('fa','component')], f = load$fa), 
                                        function(x) x[,'component']))
   rownames(mat.loadings) = levels(data[, name.env])
-  svd.lambda = svd(mat.loadings)
   
+  svd.lambda = svd(mat.loadings)
+  D = diag(svd.lambda$d^2, nrow = length(svd.lambda$d))
   if(sum(svd.lambda$u[,1] < 1)/nrow(svd.lambda$u) > 0.5){
     svd.lambda$u = -1 * svd.lambda$u
     svd.lambda$v = -1 * svd.lambda$v
@@ -60,9 +63,8 @@ fa.outs = function(model, name.env, name.gen){
   mat.loadings.star = svd.lambda$u
   colnames(mat.loadings.star) = colnames(mat.loadings)
   rownames(mat.loadings.star) = rownames(mat.loadings)
-  
+
   # Scores rotation via SVD
-  D = diag(svd.lambda$d^2)
   scores = data.frame(summary(model, coef = T)$coef.random)[
     grep('Comp', rownames(data.frame(summary(model, coef = T)$coef.random))),
   ]
@@ -72,10 +74,11 @@ fa.outs = function(model, name.env, name.gen){
   scor.mat.star = matrix(scor.vec.star, nrow = num.gen, ncol = length(unique(scores$fa)),
                          dimnames = list(levels(data[, name.gen]), unique(load$fa)))
   
+  
   # Full variance-covariance genetic matrix and genetic correlation matrix
   Gvcov = mat.loadings.star %*% tcrossprod(D, mat.loadings.star) + diag(var)
   Gcor = cov2cor(Gvcov)
-  
+
   # Percentage of explained variance
   expvar = sum(diag(mat.loadings.star %*% tcrossprod(D, mat.loadings.star)))/
     sum(diag(Gvcov))
@@ -127,26 +130,26 @@ fa.outs = function(model, name.env, name.gen){
   ASVR = lambda_ASV/G_ASV
 
   # eBLUPs
-  # modpred = predict(model, classify = paste(name.gen, name.env, sep = ':'), sed = T)
-  # blups = modpred$pvals
-  # blups = blups[,-5]
-  blups = data.frame(
+   modpred = predict(model, classify = paste(name.gen, name.env, sep = ':'), sed = T)
+   blups = modpred$pvals
+   blups = blups[,-5]
+  temp = data.frame(
     name.env = rep(levels(data[, name.env]), each = nlevels(data[, name.gen])),
     name.gen = rep(levels(data[, name.gen]), times = nlevels(data[, name.env])), 
     marginal = kronecker(mat.loadings.star, diag(num.gen)) %*% scor.vec.star
     )
-  colnames(blups) = c(name.env, name.gen, 'marginal')
-  # blups = merge(blups, temp, by = c(name.env, name.gen))
-  # colnames(blups)[which(colnames(blups) == 'predicted.value')] = 'conditional'
+  colnames(temp) = c(name.env, name.gen, 'marginal')
+  blups = merge(blups, temp, by = c(name.env, name.gen))
+  colnames(blups)[which(colnames(blups) == 'predicted.value')] = 'conditional'
+
+   # Environment-wise generalized heritabilities
+   colnames(modpred$sed) = rownames(modpred$sed) = paste(modpred$pvals[,1], modpred$pvals[,2], sep = '_')
   
-  # Environment-wise generalized heritabilities
-  # colnames(modpred$sed) = rownames(modpred$sed) = paste(modpred$pvals[,1], modpred$pvals[,2], sep = '_')
-  # 
-  # H2 = NULL
-  # for (i in levels(data[, name.env])) {
-  #   vd = (modpred$sed[grep(i, rownames(modpred$sed)), grep(i, colnames(modpred$sed))])^2
-  #   H2[i] = 1-(mean(vd[upper.tri(vd ,diag = F)])/(2*diag(Gvcov)[i]))
-  # }
+   H2 = NULL
+   for (i in levels(data[, name.env])) {
+     vd = (modpred$sed[grep(i, rownames(modpred$sed)), grep(i, colnames(modpred$sed))])^2
+     H2[i] = 1-(mean(vd[upper.tri(vd ,diag = F)])/(2*diag(Gvcov)[i]))
+   }
   
   results = list('rot.loads' = mat.loadings.star, 
                  'Gvcov' = Gvcov, 
@@ -160,7 +163,8 @@ fa.outs = function(model, name.env, name.gen){
                  ),
                  'expvar_j' = expvar.j,
                  "rot.scores" = scor.mat.star, 
-                 'blups.marg' = blups)
+                 'blups.marg' = blups,
+                 'H2' = H2)
   
   return(results)
 }
