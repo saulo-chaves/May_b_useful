@@ -163,7 +163,7 @@ fa.outs = function(model, name.env, name.gen){
                  ),
                  'expvar_j' = expvar.j,
                  "rot.scores" = scor.mat.star, 
-                 'blups.marg' = blups,
+                 'blups' = blups,
                  'H2' = H2)
   
   return(results)
