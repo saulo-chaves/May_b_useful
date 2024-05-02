@@ -1,23 +1,23 @@
-ano;sede;camp;final;placar
-1930;Uruguay;URU;Uruguay-Argentina;4x2
-1934;Italy;ITA;Italy-Czechoslovakia;2x1
-1938;France;ITA;Italy-Hungary;4x2
-1950;BRAZIL;URU;Uruguay-Brazil;2x1
-1954;  Switzerland ;ALE;Germany-Hungary;3x2
-1958;Sweden;BRA;Brazil-Sweden;5x2
-1962;ChilE;BRA;Brazil-Czechoslovakia;3x1
-1966;ENGland;ING;England-Germany;4x2
-1970;Mexico;BRA;Brazil-Italy;4x1
-1974;Germany  ;ALE;Germany-Netherlands;2x1
-1978;ArgentinA;ARG;Argentina-Netherlands;3x1
-1982;Spain;ITA;Italy-Germany;3x2
-1986;  Mexico;ARG;Argentina-Germany;3x2
-1990;Italy;ALE;Germany-Argentina;1x0
-1994;USA;BRA;Brazil-Italy;0x0
-1998;Frace;FRA;France-Brazil;3x0
-2002;Korea-Japan;BRA;Brazil-Germany;2x0
-2006;Germany  ;ITA;Italy-France;1x1
-2010;South Africa;ESP;Spain-Netherlands;1x0
-2014;BRAZIL;ALE;Germany-Argentina;1x0
-2018;Russia;FRA;France-Croatia;4x2
-2022;Qatar   ;ARG;France-Argentina;3x3
+ano,sede,camp,final,placar
+1930,Uruguay,URU,Uruguay-Argentina,4x2
+1934,Italy,ITA,Italy-Czechoslovakia,2x1
+1938,France,ITA,Italy-Hungary,4x2
+1950,BRAZIL,URU,Uruguay-Brazil,2x1
+1954,  Switzerland ,ALE,Germany-Hungary,3x2
+1958,Sweden,BRA,Brazil-Sweden,5x2
+1962,ChilE,BRA,Brazil-Czechoslovakia,3x1
+1966,ENGland,ING,England-Germany,4x2
+1970,Mexico,BRA,Brazil-Italy,4x1
+1974,Germany  ,ALE,Germany-Netherlands,2x1
+1978,ArgentinA,ARG,Argentina-Netherlands,3x1
+1982,Spain,ITA,Italy-Germany,3x2
+1986,  Mexico,ARG,Argentina-Germany,3x2
+1990,Italy,ALE,Germany-Argentina,1x0
+1994,USA,BRA,Brazil-Italy,0x0
+1998,Frace,FRA,France-Brazil,3x0
+2002,Korea-Japan,BRA,Brazil-Germany,2x0
+2006,Germany  ,ITA,Italy-France,1x1
+2010,South Africa,ESP,Spain-Netherlands,1x0
+2014,BRAZIL,ALE,Germany-Argentina,1x0
+2018,Russia,FRA,France-Croatia,4x2
+2022,Qatar   ,ARG,France-Argentina,3x3
