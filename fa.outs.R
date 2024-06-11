@@ -55,7 +55,7 @@ fa.outs = function(model, name.env, name.gen){
   
   svd.lambda = svd(mat.loadings)
   D = diag(svd.lambda$d^2, nrow = length(svd.lambda$d))
-  if(sum(svd.lambda$u[,1] < 1)/nrow(svd.lambda$u) > 0.5){
+  if(sum(svd.lambda$u[,1] < 0)/nrow(svd.lambda$u) > 0.5){
     svd.lambda$u = -1 * svd.lambda$u
     svd.lambda$v = -1 * svd.lambda$v
   }
