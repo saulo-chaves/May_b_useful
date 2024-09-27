@@ -87,7 +87,7 @@ fa.outs = function(model, name.env, name.gen){
   for (i in 1:nrow(expvar.j)) {
     for (j in 1:ncol(expvar.j)) {
       expvar.j[i,j] = 100 * mat.loadings.star[j,i]^2 * diag(D)[i]/
-        (sum(mat.loadings.star[j,]^2 * diag(D)) + diag(var)[j])
+        (sum(mat.loadings.star[j,]^2 * diag(D)) + var[j])
     }
   }
   
