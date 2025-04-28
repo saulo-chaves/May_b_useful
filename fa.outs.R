@@ -41,9 +41,17 @@ fa.outs = function(model, name.env, name.gen){
   require(asreml)
   
   data = as.data.frame(model$mf)
-  num.env = nlevels(data[, name.env])
-  num.gen = nlevels(data[, name.gen])
-  sum = summary(model)
+  
+  temp = attr(attr(model$formulae$random, 'factors'), 'dimnames')[[2]]
+  facall = temp[grepl("\\bfa\\b", temp) & grepl(geno, temp)]
+  genocall = strsplit(facall, split = ':')[[1]][1]
+  envcall = strsplit(facall, split = ':')[[1]][2]
+  num.env = length(model$G.param[[facall]][[envcall]]$levels[-grep("Comp",model$G.param[[facall]][[envcall]]$levels)])
+  num.gen = length(model$G.param[[facall]][[genocall]]$levels)
+  name.env = model$G.param[[facall]][[envcall]]$levels[-grep("Comp",model$G.param[[facall]][[envcall]]$levels)]
+  name.gen = model$G.param[[facall]][[genocall]]$levels
+  summa = summary(model)
+  
   load = sum$varcomp[grep('fa\\d+', rownames(sum$varcomp)),]
   var = sum$varcomp[grep('var', rownames(sum$varcomp)), 1]
   
@@ -51,7 +59,7 @@ fa.outs = function(model, name.env, name.gen){
   load$fa = regmatches(rownames(load), regexpr("fa\\d+", rownames(load)))
   mat.loadings = do.call(cbind, lapply(split(load[,c('fa','component')], f = load$fa), 
                                        function(x) x[,'component']))
-  rownames(mat.loadings) = levels(data[, name.env])
+  rownames(mat.loadings) = name.env
   
   svd.lambda = svd(mat.loadings)
   D = diag(svd.lambda$d^2, nrow = length(svd.lambda$d))
@@ -66,13 +74,13 @@ fa.outs = function(model, name.env, name.gen){
 
   # Scores rotation via SVD
   scores = data.frame(summary(model, coef = T)$coef.random)[
-    grep('Comp', rownames(data.frame(summary(model, coef = T)$coef.random))),
+    grep(paste0("(?=.*", geno,")(?=.*Comp)"), rownames(data.frame(summary(model, coef = T)$coef.random)), perl = TRUE),
   ]
   scores$fa = regmatches(rownames(scores), regexpr("Comp\\d+", rownames(scores)))
   scor.vec = do.call(c, lapply(split(scores, f = scores$fa), function(x) x[,'solution']))
   scor.vec.star = kronecker(sqrt(D) %*% t(svd.lambda$v), diag(num.gen)) %*% scor.vec
   scor.mat.star = matrix(scor.vec.star, nrow = num.gen, ncol = length(unique(scores$fa)),
-                         dimnames = list(levels(data[, name.gen]), unique(load$fa)))
+                         dimnames = list(name.gen, unique(load$fa)))
   
   
   # Full variance-covariance genetic matrix and genetic correlation matrix
@@ -83,7 +91,7 @@ fa.outs = function(model, name.env, name.gen){
   expvar = sum(diag(mat.loadings.star %*% tcrossprod(D, mat.loadings.star)))/
     sum(diag(Gvcov))
   expvar.j = matrix(nrow = ncol(mat.loadings), ncol = num.env, 
-                    dimnames = list(colnames(mat.loadings), levels(data[, name.env])))
+                    dimnames = list(colnames(mat.loadings), name.env))
   for (i in 1:nrow(expvar.j)) {
     for (j in 1:ncol(expvar.j)) {
       expvar.j[i,j] = 100 * mat.loadings.star[j,i]^2 * diag(D)[i]/
@@ -130,7 +138,7 @@ fa.outs = function(model, name.env, name.gen){
   ASVR = lambda_ASV/G_ASV
 
   # eBLUPs
-   modpred = predict(model, classify = paste(name.gen, name.env, sep = ':'), sed = T)
+   modpred = predict(model, classify = paste(name.gen, name.env, sep = ':'), sed = T, pworkspace=300e6)
    blups = modpred$pvals
    blups = blups[,-5]
   temp = data.frame(
