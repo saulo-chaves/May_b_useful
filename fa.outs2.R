@@ -33,7 +33,7 @@
 ##' If this turn into a package someday, I will add some details here.
 ##' 
 ##' 
-##' @author Saulo F. S. Chaves (saulo.chaves at ufv.br)
+##' @author Saulo Chaves (saulochaves at usp.br)
 ##'
 
 fa.outs = function(model, name.env, name.gen){
@@ -176,4 +176,5 @@ fa.outs = function(model, name.env, name.gen){
   
   return(results)
 }
+
 
