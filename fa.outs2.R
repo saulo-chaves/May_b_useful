@@ -43,7 +43,7 @@ fa.outs = function(model, name.env, name.gen){
   data = as.data.frame(model$mf)
   
   temp = attr(attr(model$formulae$random, 'factors'), 'dimnames')[[2]]
-  facall = temp[grepl("\\bfa\\b", temp) & grepl(geno, temp)]
+  facall = temp[grepl("\\bfa\\b", temp) & grepl(name.gen, temp)]
   genocall = strsplit(facall, split = ':')[[1]][1]
   envcall = strsplit(facall, split = ':')[[1]][2]
   num.env = length(model$G.param[[facall]][[envcall]]$levels[-grep("Comp",model$G.param[[facall]][[envcall]]$levels)])
@@ -176,5 +176,6 @@ fa.outs = function(model, name.env, name.gen){
   
   return(results)
 }
+
 
 
